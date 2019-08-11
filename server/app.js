@@ -15,30 +15,50 @@ app.use(partials());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
-app.use(cookieParser)
-app.use(Auth.createSession)
+app.use(cookieParser);
+app.use(Auth.createSession);
 
 
 app.get('/',
   (req, res) => {
-    res.render('index');
+    if (Object.keys(req.cookies).length === 0) {
+      res.redirect('/login');
+    } else {
+      res.render('index');
+    }
+  });
 
+app.get('/login',
+  (req, res) => {
+    if (Object.keys(req.cookies).length === 0) {
+      res.send();
+    } else {
+      res.render('login');
+    }
   });
 
 app.get('/create',
   (req, res) => {
-    res.render('index');
+    if (Object.keys(req.cookies).length === 0) {
+      res.redirect('/login');
+    } else {
+      res.render('signup');
+    }
   });
 
 app.get('/links',
   (req, res, next) => {
-    models.Links.getAll()
-      .then(links => {
-        res.status(200).send(links);
-      })
-      .error(error => {
-        res.status(500).send(error);
-      });
+    if (Object.keys(req.cookies).length === 0) {
+      res.redirect('/login');
+    } else {
+      models.Links.getAll()
+        .then(links => {
+          res.status(200).send(links);
+        })
+        .error(error => {
+          res.status(500).send(error);
+        });
+    }
   });
 
 app.post('/links',
@@ -80,37 +100,60 @@ app.post('/links',
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+app.get('/signup',
+  (req, res) => {
+    res.render('signup');
+  });
 
 app.post('/signup',
   (req, res) => {
     return models.Users.create(req.body)
+      .then((options) => {
+        UserId = options.insertId;
+        return models.Sessions.update({ hash: req.session.hash }, { userId: UserId });
+      })
       .then(() => {
         res.redirect('/');
       })
       .error(error => {
         res.redirect('/signup');
-      })
-  })
-  ;
+      });
+  });
 
 app.post('/login',
   (req, res) => {
+    var passTheSalt;
     return models.Users.get({ username: req.body.username })// promise from get method from Users
-      .then((passTheSalt) => {
-        if (passTheSalt === undefined) {
+      .then((user) => {
+        if (user === undefined) {
           res.redirect('/login');
-        } else if (models.Users.compare(req.body.password, passTheSalt.password, passTheSalt.salt)) {
-          res.redirect('/');
         } else {
-          res.redirect('/login');
+          passTheSalt = user;
+          return models.Sessions.update({ hash: req.session.hash }, { userId: user.id })
+            .then(() => {
+              if (passTheSalt === undefined) {
+                res.redirect('/login');
+              } else if (models.Users.compare(req.body.password, passTheSalt.password, passTheSalt.salt)) {
+                res.redirect('/');
+              } else {
+                res.redirect('/login');
+              }
+            });
         }
-      })
-      .error(error => {
-        res.redirect('/login');
-      })
+      });
   }
-)
+);
 
+app.get('/logout',
+  (req, res) => {
+
+    return models.Sessions.delete({ userId: req.session.id })
+      .then((user) => {
+        res.cookie('shortlyid', null).send();
+      });
+
+  }
+);
 
 /************************************************************/
 // Handle the code parameter route last - if all other routes fail

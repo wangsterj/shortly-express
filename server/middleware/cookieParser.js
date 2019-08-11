@@ -1,12 +1,12 @@
 const parseCookies = (req, res, next) => {
   if (!req.headers.hasOwnProperty('cookie')) {
-    req.cookies = {}
+    req.cookies = {};
     next();
   } else {
-    req.cookies = {}
+    req.cookies = {};
     var cookieMonster = req.headers.cookie.split('; ');
     cookieMonster = cookieMonster.map((cookie) => {
-      return cookie.split('=')
+      return cookie.split('=');
     });
 
     for (var i = 0; i < cookieMonster.length; i++) {

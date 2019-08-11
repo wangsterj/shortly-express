@@ -45,6 +45,10 @@ class Sessions extends Model {
       });
   }
 
+  delete(options) {
+    return super.delete.call(this, options);
+  }
+
   /**
    * Creates a new session. Within this function, a hash is randomly generated.
    * @returns {Promise<Object>} A promise that is fulfilled with the results of
